@@ -1,7 +1,7 @@
 # K8s Runtime Detection — 클러스터 런타임 위협 탐지 프레임워크
 
 컨테이너가 **실행 중일 때(runtime)** 발생하는 보안 이벤트를 수집·탐지·알림·차단까지 이어지는 **엔드투엔드 데모/레퍼런스** 저장소입니다.
-리포는 규칙(`rules/`), 데모 매니페스트(`manifests/demo/`), 인프라(`infra/`), 스크립트(`scripts/`), 문서(`docs/`), 자동화(예: `Makefile`)로 구성되어 있습니다. ([GitHub][1])
+리포는 규칙(`rules/`), 데모 매니페스트(`manifests/demo/`), 인프라(`infra/`), 스크립트(`scripts/`), 문서(`docs/`), 자동화(예: `Makefile`)로 구성되어 있습니다.
 
 ---
 
