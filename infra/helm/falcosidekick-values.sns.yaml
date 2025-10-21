@@ -1,0 +1,13 @@
+replicaCount: 1
+config:
+  debug: false
+  sns:
+    enabled: true
+    region: ${AWS_REGION}
+    topicarn: ${SNS_TOPIC_ARN}
+    raw: true
+serviceAccount:
+  create: true
+  name: falcosidekick
+  annotations:
+    eks.amazonaws.com/role-arn: ${FALCOSIDEKICK_ROLE_ARN}

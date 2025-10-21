@@ -1,0 +1,38 @@
+name: falco-mini-ci
+on: [push, pull_request]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kind
+        uses: helm/kind-action@v1
+        with:
+          version: v0.23.0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Create cluster
+        run: ./scripts/kind_up.sh
+
+      - name: Install Falco
+        run: ./scripts/install_falco.sh
+
+      - name: Install Falcosidekick (stdout)
+        run: ./scripts/install_sidekick_stdout.sh
+
+      - name: Trigger violations
+        run: ./scripts/demo_triggers.sh
+
+      - name: Assert logs contain rules
+        run: |
+          kubectl -n falco logs -l app.kubernetes.io/name=falco --tail=400 | \
+          egrep -q "SHELL in container|PKG MANAGER|IMDS access|SUSPICIOUS outbound|WRITE cron|PERM change" || \
+          (echo "Falco rule events not found" && exit 1)
+
+      - name: Cleanup
+        if: always()
+        run: ./scripts/cleanup.sh

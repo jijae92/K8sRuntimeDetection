@@ -1,0 +1,95 @@
+# ==== Lists & Macros ====
+- list: allowed_images
+  items: [ "registry.k8s.io/pause", "k8s.gcr.io/pause" ]
+
+- list: allowed_namespaces
+  items: [ "kube-system", "gatekeeper-system" ]
+
+- list: suspicious_c2_ports
+  items: [ 22, 23, 4444, 5555, 6667, 1337, 14444, 3333 ]
+
+- macro: is_container
+  condition: (evt.type = execve or evt.type in (open, openat, connect, chmod, chown, mount)) and container.id != host
+
+- macro: not_allowed_ns_img
+  condition: (not k8s.ns.name in (allowed_namespaces)) and (not fd.name startswith "/proc") and (not proc.aname in (allowed_images))
+
+# 1) Unexpected Shell Spawn
+- rule: Container Spawned Shell
+  desc: shell (sh|bash|zsh) spawned inside container
+  condition: is_container and proc.name in (bash, sh, zsh) and not k8s.ns.name in (allowed_namespaces)
+  output: "SHELL in container (user=%user.name ns=%k8s.ns.name pod=%k8s.pod.name proc=%proc.name cmd=%proc.cmdline)"
+  priority: WARNING
+  tags: [container, runtime, shell]
+
+# 2) Write Below /etc (passwd/shadow/group)
+- rule: Write Below Etc Sensitive
+  desc: modifying /etc/passwd|shadow|group from container
+  condition: is_container and evt.type in (open, openat) and fd.name startswith /etc and fd.name in (/etc/passwd, /etc/shadow, /etc/group) and evt.arg.flags contains O_WRONLY
+  output: "WRITE sensitive file under /etc (file=%fd.name ns=%k8s.ns.name pod=%k8s.pod.name user=%user.name cmd=%proc.cmdline)"
+  priority: CRITICAL
+  tags: [persistence, container]
+
+# 3) Modify System Binaries (/bin,/usr/bin)
+- rule: Modify System Binaries
+  desc: writes to system binaries directories
+  condition: is_container and evt.type in (open, openat) and (fd.name startswith /bin or fd.name startswith /usr/bin) and evt.arg.flags contains O_WRONLY
+  output: "WRITE to system bin (file=%fd.name ns=%k8s.ns.name pod=%k8s.pod.name cmd=%proc.cmdline)"
+  priority: HIGH
+  tags: [tamper, container]
+
+# 4) Package Manager In Container
+- rule: Package Manager Launched
+  desc: package manager executed in running container
+  condition: is_container and proc.name in (apk, apt, apt-get, yum, dnf, zypper)
+  output: "PKG MANAGER in container (proc=%proc.name ns=%k8s.ns.name pod=%k8s.pod.name cmd=%proc.cmdline)"
+  priority: NOTICE
+  tags: [supplychain, container]
+
+# 5) Contact Cloud Metadata (169.254.169.254)
+- rule: Contact Cloud Metadata
+  desc: container attempts to reach instance metadata service
+  condition: is_container and evt.type=connect and fd.type=ipv4 and fd.sip != 127.0.0.1 and fd.sip = 169.254.169.254
+  output: "IMDS access from container (ns=%k8s.ns.name pod=%k8s.pod.name proc=%proc.name -> %fd.sip:%fd.dport cmd=%proc.cmdline)"
+  priority: HIGH
+  tags: [exfil, credential, container]
+
+# 6) Create/Mount Inside Container
+- rule: Mount Execution In Container
+  desc: mount syscall executed inside container
+  condition: is_container and evt.type=mount
+  output: "MOUNT in container (ns=%k8s.ns.name pod=%k8s.pod.name src=%evt.arg.source target=%evt.arg.target fstype=%evt.arg.fstype)"
+  priority: HIGH
+  tags: [privilege, container]
+
+# 7) Privileged Container Started
+- rule: Privileged Container
+  desc: pod/ctr started with privileged=true
+  condition: container.privileged=true
+  output: "PRIVILEGED container (ns=%k8s.ns.name pod=%k8s.pod.name image=%container.image.repository)"
+  priority: CRITICAL
+  tags: [k8s, admission, misconfig]
+
+# 8) Write Cron Paths
+- rule: Write Cron Files
+  desc: writes to cron directories from container
+  condition: is_container and evt.type in (open, openat) and (fd.name startswith /etc/cron or fd.name startswith /var/spool/cron) and evt.arg.flags contains O_WRONLY
+  output: "WRITE cron path (file=%fd.name ns=%k8s.ns.name pod=%k8s.pod.name cmd=%proc.cmdline)"
+  priority: MEDIUM
+  tags: [persistence, container]
+
+# 9) Suspicious Outbound Ports (C2 Set)
+- rule: Outbound Suspicious Ports
+  desc: outbound connection to suspicious ports from container
+  condition: is_container and evt.type=connect and fd.type=ipv4 and fd.dport in (suspicious_c2_ports)
+  output: "SUSPICIOUS outbound (ns=%k8s.ns.name pod=%k8s.pod.name dst=%fd.rip:%fd.dport proc=%proc.name cmd=%proc.cmdline)"
+  priority: MEDIUM
+  tags: [c2, container]
+
+# 10) Chmod/Chown On System Paths
+- rule: Permission Change System Paths
+  desc: chmod/chown below /etc or system bins
+  condition: is_container and evt.type in (chmod, fchmod, chown, fchown) and (fd.name startswith /etc or fd.name startswith /bin or fd.name startswith /usr/bin)
+  output: "PERM change on system path (op=%evt.type file=%fd.name ns=%k8s.ns.name pod=%k8s.pod.name user=%user.name cmd=%proc.cmdline)"
+  priority: MEDIUM
+  tags: [tamper, container]

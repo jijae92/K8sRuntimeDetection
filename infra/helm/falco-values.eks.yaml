@@ -1,0 +1,18 @@
+driver:
+  kind: ebpf
+ebpf:
+  enabled: true
+falco:
+  json_output: true
+  time_format_iso_8601: true
+  rules_files:
+    - /etc/falco/rules.d/custom_rules.yaml
+  plugins:
+    enabled: false
+daemonset:
+  priorityClassName: system-node-critical
+rbac:
+  create: true
+customRules:
+  enabled: true
+  rulesFile: custom_rules.yaml

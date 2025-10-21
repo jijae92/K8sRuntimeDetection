@@ -1,0 +1,11 @@
+replicaCount: 1
+config:
+  debug: true
+  loki: { enabled: false }
+  nats: { enabled: false }
+  sns:
+    enabled: false
+webui:
+  enabled: false
+service:
+  type: ClusterIP

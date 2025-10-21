@@ -1,0 +1,20 @@
+# kind 환경: eBPF 드라이버 사용, 기본 룰 + 커스텀 룰 포함
+driver:
+  kind: ebpf
+ebpf:
+  enabled: true
+falco:
+  json_output: true
+  time_format_iso_8601: true
+  rules_files:
+    - /etc/falco/rules.d/custom_rules.yaml
+  plugins:
+    enabled: false
+daemonset:
+  priorityClassName: ""
+  tolerations: []
+rbac:
+  create: true
+customRules:
+  enabled: true
+  rulesFile: custom_rules.yaml
