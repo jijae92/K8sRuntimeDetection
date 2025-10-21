@@ -26,7 +26,7 @@ resource "aws_iam_role_policy" "sns_publish" {
     Statement = [{
       Effect = "Allow",
       Action = ["sns:Publish"],
-      Resource = ["*"]   # TODO: 최소 권한으로 SNS 토픽 ARN만 허용
+      Resource = [aws_sns_topic.falco_alerts.arn]
     }]
   })
 }

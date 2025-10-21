@@ -2,8 +2,11 @@
 
 up:
 	./scripts/kind_up.sh
-falco:
-	./scripts/install_falco.sh
+falco-install-kind:
+	./scripts/install_falco.sh kind
+falco-install-eks:
+	./scripts/install_falco.sh eks
+falco: falco-install-kind
 sidekick:
 	./scripts/install_sidekick_stdout.sh
 demo:

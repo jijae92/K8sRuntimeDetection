@@ -18,8 +18,13 @@ jobs:
       - name: Create cluster
         run: ./scripts/kind_up.sh
 
-      - name: Install Falco
-        run: ./scripts/install_falco.sh
+      - name: Ensure Helm chart versions are pinned
+        run: |
+          grep -q -- "--version" scripts/install_falco.sh
+          grep -q -- "--version" scripts/install_sidekick_stdout.sh
+          grep -q -- "--version" scripts/install_sidekick_sns.sh
+
+      - name: Install Falco        run: ./scripts/install_falco.sh
 
       - name: Install Falcosidekick (stdout)
         run: ./scripts/install_sidekick_stdout.sh
